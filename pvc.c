@@ -4,14 +4,10 @@
  * The game state (both X and O bitboards) are stored in a single 
  * unsigned 32-bit integer (8 Bytes).
  *
- * BYTE 1:  0000
- * BYTE 2:  0000
- * BYTE 3:  000X
- * BYTE 4:  XXXX
- * BYTE 5:  XXXX
- * BYTE 6:  000O
- * BYTE 7:  OOOO
- * BYTE 8:  OOOO
+ * BYTE 1:  0000 0000
+ * BYTE 2:  000X XXXX
+ * BYTE 3:  XXXX 000O
+ * BYTE 4:  OOOO OOOO
  *
  * The positions marked X and O are the respective bitboards of the
  * X and Y Playables.
@@ -70,14 +66,31 @@ const uint32_t win_bitmasks[2][8] = {
     {0x00000111, 0x00000054, 0x000001C0, 0x00000038, 0x00000007, 0x00000124, 0x00000092, 0x00000049}
 };
 
+const int all_fill_bitmask = 0x000001FF;
+
 typedef enum {
     X, O
 } playables;
 
-typedef struct board
+typedef struct node_t
 {
+    // game state
     uint32_t game_state;
-} board_t;
+    int state_score;
+
+    // move to get to this game state
+    int position;
+    playables p;
+
+    // previous and next states
+    struct node_t* previous;
+    // this is an array of future states. Will be NULL 
+    // if the state is a win/loss/draw state
+    struct node_t** future_states; 
+
+    // boolean status indicator
+    bool is_maximizer;
+} node;
 
 
 // utility functions
@@ -140,6 +153,68 @@ int check_board_validity(uint32_t state)
     return !(state & (state >> 12));
 }
 
+int check_win(uint32_t state, playables p)
+{
+    // check if playable P has won the game or not
+    int index = get_index_from_playable(p);
+    for (int i = 0; i < 8; i++)
+    {
+        // printf("\n");
+        // printf("Evaluating \n");
+        // print_board(state);
+        // printf("Against \n");
+        // print_board(win_bitmasks[index][i]);
+        uint32_t result = win_bitmasks[index][i] & state;
+        // print_board(result);
+
+        // check for equality so that 
+        if (!(result ^ win_bitmasks[index][i]))
+        {
+            printf("Win!\n");
+            return 1;
+        }
+
+    }
+    return 0;
+}
+
+
+
+// heuristic function
+int heuristic(uint32_t state, playables p)
+{
+    /*
+     * This is the Heuristic Function for the Game Board
+     * Returns 1 for a win for the specific player Returns 0 for a draw
+     * Returns -1 for a loss for the specific player
+     *
+     * Unwieldy hack: create temporary playable array to handle index toggles
+     *
+     */
+    playables p_array[2] = {X, O};
+    int player_index = get_index_from_playable(p);
+
+    playables anti_player = p_array[!player_index];
+
+    if (check_win(state, p))
+    {
+        return 1;
+    }
+    // else if (check_draw(state))
+    // {
+    //     return 0;
+    // }
+    else if (check_win(state, anti_player))
+    {
+        return -1;
+    }
+    else {
+        return -10;
+    }
+
+}
+
+
 int get_state(uint32_t state, playables player, int position)
 {
     /*
@@ -193,30 +268,6 @@ void print_board(uint32_t state)
     }
 }
 
-int check_win(uint32_t state, playables p)
-{
-    // check if playable P has won the game or not
-    int index = get_index_from_playable(p);
-    for (int i = 0; i < 8; i++)
-    {
-        // printf("\n");
-        // printf("Evaluating \n");
-        // print_board(state);
-        // printf("Against \n");
-        // print_board(win_bitmasks[index][i]);
-        uint32_t result = win_bitmasks[index][i] & state;
-        // print_board(result);
-
-        // check for equality so that 
-        if (!(result ^ win_bitmasks[index][i]))
-        {
-            printf("Win!\n");
-            return 1;
-        }
-
-    }
-    return 0;
-}
 
 
 
@@ -243,6 +294,32 @@ uint32_t set_state(uint32_t state, playables player, int position)
     */
     uint32_t modified = state | new_state;
     return modified;
+}
+
+int check_draw(uint32_t state)
+{
+    // if it's a draw, it's
+    // 1. NOT A WIN
+    // 2. All spaces are full
+    // print_board(state);
+
+    // OR the bits to get superimposed positions of bitboards X and O
+    uint32_t temp_result = state | (state >> 12);
+
+    // retain only the last 12 bits
+    temp_result &= 0x000001FF;
+
+    // toggle the last 12 bits using XOR
+    uint32_t result = all_fill_bitmask ^ temp_result;
+
+    if (result == 0)
+    {
+        printf("Draw!\n");
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 
@@ -281,6 +358,14 @@ int make_play(uint32_t* state, playables playable, int position)
     }
 }
 
+/*
+ * BOARD/NODE methods
+ */
+
+
+node** generate_moves(node* origin);
+
+
 
 
 
@@ -293,6 +378,9 @@ void play_pvc()
     int flag = 0;
     int lead_choice = 0;
     int turn = 0;
+
+    // testcase for draw
+    // printf("%d\n", check_draw(0x0017208D));
 
     playables seq_array[2];
 
