@@ -179,6 +179,33 @@ int check_win(uint32_t state, playables p)
 }
 
 
+int check_draw(uint32_t state)
+{
+    // if it's a draw, it's
+    // 1. NOT A WIN
+    // 2. All spaces are full
+    // print_board(state);
+
+    // OR the bits to get superimposed positions of bitboards X and O
+    uint32_t temp_result = state | (state >> 12);
+
+    // retain only the last 12 bits
+    temp_result &= 0x000001FF;
+
+    // toggle the last 12 bits using XOR
+    uint32_t result = all_fill_bitmask ^ temp_result;
+
+    if (result == 0)
+    {
+        printf("Draw!\n");
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+
 
 // heuristic function
 int heuristic(uint32_t state, playables p)
@@ -200,10 +227,10 @@ int heuristic(uint32_t state, playables p)
     {
         return 1;
     }
-    // else if (check_draw(state))
-    // {
-    //     return 0;
-    // }
+    else if (check_draw(state))
+    {
+        return 0;
+    }
     else if (check_win(state, anti_player))
     {
         return -1;
@@ -295,33 +322,6 @@ uint32_t set_state(uint32_t state, playables player, int position)
     uint32_t modified = state | new_state;
     return modified;
 }
-
-int check_draw(uint32_t state)
-{
-    // if it's a draw, it's
-    // 1. NOT A WIN
-    // 2. All spaces are full
-    // print_board(state);
-
-    // OR the bits to get superimposed positions of bitboards X and O
-    uint32_t temp_result = state | (state >> 12);
-
-    // retain only the last 12 bits
-    temp_result &= 0x000001FF;
-
-    // toggle the last 12 bits using XOR
-    uint32_t result = all_fill_bitmask ^ temp_result;
-
-    if (result == 0)
-    {
-        printf("Draw!\n");
-        return 1;
-    }
-    else {
-        return 0;
-    }
-}
-
 
 // print status
 void print_play_status(playables p, int index)
@@ -427,10 +427,25 @@ void play_pvc()
         {
             flag = 1;
         }
-        else if (check_win(state, current))
+
+        int winstatus = heuristic(state, current);
+
+        switch (winstatus)
         {
-            printf("Player %s wins!\n", playable_string);
-            flag = 1;
+            case 1:
+                printf("Player Wins!\n");
+                flag = 1;
+                break;
+
+            case -1:
+                printf("Player Loses!\n");
+                flag = 1;
+                break;
+
+            case 0:
+                printf("Draw!\n");
+                flag = 1;
+                break;
         }
 
         turn++;
