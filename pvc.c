@@ -51,6 +51,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include "pvc.h"
 
@@ -108,6 +109,18 @@ int get_index_from_playable(playables p)
         default:
             printf("This is an Invalid Playable!\n");
             return 9;
+    }
+}
+
+playables get_next_playable(playables p)
+{
+    // returns X for O, and O for X
+    switch (p)
+    {
+        case X:
+            return O;
+        case O:
+            return X;
     }
 }
 
@@ -207,21 +220,15 @@ int check_draw(uint32_t state)
 
 
 
-// heuristic function
 int heuristic(uint32_t state, playables p)
 {
     /*
-     * This is the Heuristic Function for the Game Board
-     * Returns 1 for a win for the specific player Returns 0 for a draw
+     * Heuristic Function for the Game Board
+     * Returns 1 for a win for the specific player 
+     * Returns 0 for a draw
      * Returns -1 for a loss for the specific player
-     *
-     * Unwieldy hack: create temporary playable array to handle index toggles
-     *
      */
-    playables p_array[2] = {X, O};
-    int player_index = get_index_from_playable(p);
-
-    playables anti_player = p_array[!player_index];
+    playables anti_player = get_next_playable(p);
 
     if (check_win(state, p))
     {
@@ -363,7 +370,46 @@ int make_play(uint32_t* state, playables playable, int position)
  */
 
 
-node** generate_moves(node* origin);
+node* generate_moves(node* origin, playables p_current)
+{
+    /*
+     * Move generator
+     * Works by playing a move at the first empty positon using get_state for
+     * the given playable, and rejecting invalid moves
+     *
+     * Returns an array of all the possible valid moves, and NULL if the state is a win state
+     *
+     */
+
+    // allocate a minimum of nine elements for the possible moves.
+    node* new_states = (node*)malloc(sizeof(node)*9);
+
+    int node_count = 0;
+    playables p_next = get_next_playable(p_current);
+
+    // find the first empty position
+    for (int i = 0; i < 9; i++)
+    {
+        int status = get_state(origin->game_state, p_next, i);
+        // move is valid
+        if (!status)
+        {
+            // mutate the game state
+            new_states[node_count].game_state = origin->game_state;
+            make_play(&new_states[node_count].game_state, p_next, i);
+            // NULL safety
+            new_states[node_count].future_states = NULL;
+            new_states[node_count].state_score = 0;
+            // set the move it took to come here
+            new_states[node_count].p = p_next;
+            new_states[node_count].position = i;
+            // origin
+            new_states[node_count].previous = origin;
+        }
+    }
+
+    return new_states;
+}
 
 
 
