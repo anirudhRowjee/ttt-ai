@@ -1,0 +1,40 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ConvertXYToHex32	temp.html	/^      function ConvertXYToHex32()$/;"	f
+O	pvc.c	/^    X, O$/;"	e	enum:__anon1	file:
+X	pvc.c	/^    X, O$/;"	e	enum:__anon1	file:
+all_fill_bitmask	pvc.c	/^const int all_fill_bitmask = 0x000001FF;$/;"	v
+check_board_validity	pvc.c	/^int check_board_validity(uint32_t state)$/;"	f
+check_draw	pvc.c	/^int check_draw(uint32_t state)$/;"	f
+check_win	pvc.c	/^int check_win(uint32_t state, playables p)$/;"	f
+children_count	pvc.c	/^    int children_count;$/;"	m	struct:node_t	file:
+future_states	pvc.c	/^    struct node_t** future_states;$/;"	m	struct:node_t	typeref:struct:node_t::node_t	file:
+generate_moves	pvc.c	/^node** generate_moves(node* origin, playables p_current)$/;"	f
+get_index_from_playable	pvc.c	/^int get_index_from_playable(playables p)$/;"	f
+get_next_playable	pvc.c	/^playables get_next_playable(playables p)$/;"	f
+get_state	pvc.c	/^int get_state(uint32_t state, playables player, int position)$/;"	f
+get_string_for_playable	pvc.c	/^char* get_string_for_playable(playables p)$/;"	f
+heuristic	pvc.c	/^int heuristic(uint32_t state, playables p)$/;"	f
+index	pvc.c	/^    int index;$/;"	m	struct:node_t	file:
+is_maximizer	pvc.c	/^    bool is_maximizer;$/;"	m	struct:node_t	file:
+main	main.c	/^int main()$/;"	f
+make_play	pvc.c	/^int make_play(uint32_t state, playables playable, int position)$/;"	f
+move_playable	pvc.c	/^    playables move_playable;$/;"	m	struct:node_t	file:
+node	pvc.c	/^} node;$/;"	t	typeref:struct:node_t	file:
+node_t	pvc.c	/^typedef struct node_t$/;"	s	file:
+play_pvc	pvc.c	/^void play_pvc()$/;"	f
+play_pvp	pvp.c	/^void play_pvp()$/;"	f
+playables	pvc.c	/^} playables;$/;"	t	typeref:enum:__anon1	file:
+previous	pvc.c	/^    struct node_t* previous;$/;"	m	struct:node_t	typeref:struct:node_t::node_t	file:
+print_board	pvc.c	/^void print_board(uint32_t state)$/;"	f
+print_play_status	pvc.c	/^void print_play_status(playables p, int index)$/;"	f
+score	pvc.c	/^    int score;$/;"	m	struct:node_t	file:
+set_state	pvc.c	/^uint32_t set_state(uint32_t state, playables player, int position)$/;"	f
+state	pvc.c	/^    uint32_t state;$/;"	m	struct:node_t	file:
+state_bitmasks	pvc.c	/^const uint32_t state_bitmasks[2][9] = {$/;"	v
+verify_position	pvc.c	/^int verify_position(int position)$/;"	f
+win_bitmasks	pvc.c	/^const uint32_t win_bitmasks[2][8] = {$/;"	v

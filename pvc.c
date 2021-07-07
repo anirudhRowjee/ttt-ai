@@ -73,24 +73,38 @@ typedef enum {
     X, O
 } playables;
 
+// one specific state of the game.
 typedef struct node_t
 {
-    // game state
-    uint32_t game_state;
-    int state_score;
 
-    // move to get to this game state
-    int position;
-    playables p;
+    // current state of the game
+    uint32_t state;
 
-    // previous and next states
+    // current playable
+    playables current_playable;
+
+    // ancestral state
     struct node_t* previous;
-    // this is an array of future states. Will be NULL 
-    // if the state is a win/loss/draw state
-    struct node_t** future_states; 
 
-    // boolean status indicator
+    // state score (min_max values come here)
+    int score;
+
+    // boolean to determine if the node is a maximizer node or a minimizer node
+    // this determines the function to be used to compare all the values after a
+    // recursive call.
     bool is_maximizer;
+
+    // array of pointers to previous states
+    // at max nine
+    struct node_t** future_states;
+
+    // the move required to reach this state
+    playables move_playable;
+    int move_index;
+
+    // keep track of the number of children (index iteration)
+    int children_count;
+
 } node;
 
 
@@ -163,7 +177,7 @@ int check_board_validity(uint32_t state)
      * Return 0 if the board is invalid, 
      * else Return 1
      */
-    return !(state & (state >> 12));
+    return !(0x000001FF & (state & (state >> 12)));
 }
 
 int check_win(uint32_t state, playables p)
@@ -183,7 +197,7 @@ int check_win(uint32_t state, playables p)
         // check for equality so that 
         if (!(result ^ win_bitmasks[index][i]))
         {
-            printf("Win!\n");
+            // printf("Win!\n");
             return 1;
         }
 
@@ -243,7 +257,7 @@ int heuristic(uint32_t state, playables p)
         return -1;
     }
     else {
-        return -10;
+        return 2;
     }
 
 }
@@ -268,16 +282,22 @@ int get_state(uint32_t state, playables player, int position)
     return !!(state_bitmasks[selector][index] & state);
 }
 
+
+// check if an index is set or not
+int check_index(uint32_t state, int position)
+{
+    return (get_state(state, X, position) || get_state(state, O, position));
+}
+
 // print the board
 void print_board(uint32_t state)
 {
     // check to make sure the board is valid
     int valid = check_board_validity(state);
-    printf("Validity %d\n", valid);
-
+    // printf("Validity %d\n", valid);
     if (!valid)
     {
-        printf("Board is Invalid. Exiting\n");
+        // printf("Board is Invalid. Exiting\n");
         return;
     }
 
@@ -340,7 +360,7 @@ void print_play_status(playables p, int index)
             );
 }
 
-int make_play(uint32_t* state, playables playable, int position)
+int make_play(uint32_t state, playables playable, int position)
 {
 
     /*
@@ -351,17 +371,15 @@ int make_play(uint32_t* state, playables playable, int position)
      *
      */
     // printf("validity %d\n", check_board_validity(*state));
-    uint32_t temp_state = set_state(*state, playable, position);
+    uint32_t temp_state = set_state(state, playable, position);
 
     if (check_board_validity(temp_state) != 1)
     {
-        printf("Illegal Move!\n");
+        // printf("Illegal Move!\n");
         return -1;
     }
     else {
-
-        *state = temp_state;
-        return 1;
+        return temp_state;
     }
 }
 
@@ -369,8 +387,22 @@ int make_play(uint32_t* state, playables playable, int position)
  * BOARD/NODE methods
  */
 
+void print_node(node* origin)
+{
+    // function to print a node
+    printf(" ======= PRINTING NODE AT %p\n", origin);
+    printf("\tPLAYABLE: %s\n", get_string_for_playable(origin->current_playable));
+    printf("\tPARENT: %p\n", origin->previous);
+    printf("\tSCORE: %d\n", origin->score);
+    printf("\tIS_MAXIMIZER: %d\n", origin->is_maximizer);
+    printf("\tFUTURE STATES: %p\n", origin->future_states);
+    printf("\tMOVE PLAYABLE: %s\n", get_string_for_playable(origin->current_playable));
+    printf("\tMOVE INDEX: %d\n", origin->move_index);
+    printf("\tCHILD COUNT: %d\n", origin->children_count);
+}
 
-node* generate_moves(node* origin, playables p_current)
+
+node** generate_moves(node* origin, int depth)
 {
     /*
      * Move generator
@@ -381,34 +413,125 @@ node* generate_moves(node* origin, playables p_current)
      *
      */
 
-    // allocate a minimum of nine elements for the possible moves.
-    node* new_states = (node*)malloc(sizeof(node)*9);
+    playables next_player = get_next_playable(origin->current_playable);
 
-    int node_count = 0;
-    playables p_next = get_next_playable(p_current);
+    // check to see if the current game state is valid or not
+    // if the current node is either a win or a loss, we return 
+    // and do nothing
+    int status = heuristic(origin->state, origin->current_playable);
 
-    // find the first empty position
-    for (int i = 0; i < 9; i++)
+    int current_children_count = 0;
+
+    // declare the next pointer array
+    node** next_moves = malloc(sizeof(node*)*9);
+
+    if (status >= -1 && status <= 1)
     {
-        int status = get_state(origin->game_state, p_next, i);
-        // move is valid
-        if (!status)
+        // terminal state, no future states possible
+        // assign score to origin node and move on
+        origin->score = status;
+        // printf("Terminal state >> \n");
+        // print_board(origin->state);
+        // origin->children_count = 0;
+        free(next_moves);
+        return NULL;
+    }
+    else
+    {
+        // non-terminal state with possible future states
+        // recursively call generate_moves on each node
+        // spawned, maximize/minimize based on the is_maximizer
+        // function and then output the score
+
+        // This forces it into DFS by default
+        for (int i = 0; i < 9; i++)
         {
-            // mutate the game state
-            new_states[node_count].game_state = origin->game_state;
-            make_play(&new_states[node_count].game_state, p_next, i);
-            // NULL safety
-            new_states[node_count].future_states = NULL;
-            new_states[node_count].state_score = 0;
-            // set the move it took to come here
-            new_states[node_count].p = p_next;
-            new_states[node_count].position = i;
-            // origin
-            new_states[node_count].previous = origin;
+            // check for possible open positions
+
+            // make the play, and check if it's valid or not
+            uint32_t played = make_play(origin->state, origin->current_playable, i+1);
+
+            if (check_board_validity(played))
+            {
+                // printf("Valid move for state at %d\n", i+1);
+                // we have found a valid move! allocate the memory for it.
+                node* new_node = malloc(sizeof(node));
+                if (new_node == NULL)
+                {
+                    // bad news - malloc failed
+                    printf("\n Allocation Failed! Exiting.. \n");
+                    exit(1);
+                }
+                else
+                {
+                    // allocation successfull! we now allocate everything else.
+
+                    // set the next "origin"
+                    new_node->state = played;
+                    new_node->current_playable = next_player;
+
+                    new_node->previous = origin;
+
+                    new_node->score = 10;
+
+                    // flip the bit
+                    new_node->is_maximizer = !origin->is_maximizer;
+
+                    new_node->future_states = NULL;
+
+                    new_node->move_playable = origin->current_playable;
+                    new_node->move_index = i+1;
+
+                    new_node->children_count = 0;
+
+                    // TODO implement recursive call here, and maximize
+
+                    if (depth > 0)
+                    {
+                        new_node->future_states = generate_moves(new_node, depth-1);
+                    }
+                    else
+                    {
+                        new_node->future_states = NULL;
+                    }
+                }
+                // allocate to array index
+                // print_node(new_node);
+                // print_board(new_node->state);
+                next_moves[current_children_count] = new_node;
+                current_children_count++;
+            }
         }
+        origin->children_count = current_children_count;
     }
 
-    return new_states;
+    // TODO modify score here
+    return next_moves;
+}
+
+void free_game_tree(node* origin)
+{
+    // printf("Starting recursive free at %p\n", origin);
+    // recursively free the game tree
+    if (origin->future_states == NULL)
+    {
+        // base case! do nothing
+        // printf("No Future States!\n");
+    }
+    else
+    {
+        for (int i = 0; i < origin->children_count; i++)
+        {
+            if (origin->future_states[i] != NULL)
+            {
+                free_game_tree(origin->future_states[i]);
+            }
+        }
+        // free the pointer array itself
+        free(origin->future_states);
+        // printf("Free Complete!\n");
+    }
+    free(origin);
 }
 
 
@@ -417,6 +540,8 @@ node* generate_moves(node* origin, playables p_current)
 
 void play_pvc()
 {
+
+    // printf("%ld\n", sizeof(node));
 
     // implement the player vs computer game here
     printf("Playing the PVC game.\n");
@@ -428,74 +553,38 @@ void play_pvc()
     // testcase for draw
     // printf("%d\n", check_draw(0x0017208D));
 
-    playables seq_array[2];
 
-    printf("WELCOME TO PVC TICTACTOE!\n");
-    printf("1 - X first, 2 - O first\n");
-    scanf("%d", &lead_choice);
+    // TESTING MOVE GENERATION
+    /*
+    node origin1 = {
+        ,
+        X,
+        NULL,
+        0,
+        true,
+        NULL,
+        X,
+        0,
+        0
+    };
+    */
 
-    switch (lead_choice)
-    {
-        case 1:
-            seq_array[0] = X;
-            seq_array[1] = O;
-            break;
+    node* origin = malloc(sizeof(node));
+    origin->state = 0x00000000;
+    origin->current_playable = X;
+    origin->previous = NULL;
+    origin->score = 10;
+    origin->is_maximizer = true;
+    origin->future_states = NULL;
+    origin->move_playable = X;
+    origin->move_index = 0;
+    origin->children_count = 0;
 
-        case 2:
-            seq_array[0] = O;
-            seq_array[1] = X;
-            break;
+    print_node(origin);
+    node** testbed = generate_moves(origin, 8);
 
-        default:
-            printf("That isn't a valid answer! exiting..\n");
-            flag = 1;
-            break;
-    }
+    origin->future_states = testbed;
 
-    printf("Beginning Game...\n");
-
-    // game loop
-    while (!flag)
-    {
-        playables current = seq_array[turn % 2];
-        char* playable_string = get_string_for_playable(current);
-        printf("Player Turn : %s\n", playable_string);
-
-        printf("The board is currently >> \n");
-        print_board(state);
-
-        int play_pos;
-        printf("Enter the position to play at (1-9) >> ");
-        scanf("%d", &play_pos);
-
-        int result = make_play(&state,  current, play_pos);
-        if (result == -1)
-        {
-            flag = 1;
-        }
-
-        int winstatus = heuristic(state, current);
-
-        switch (winstatus)
-        {
-            case 1:
-                printf("Player Wins!\n");
-                flag = 1;
-                break;
-
-            case -1:
-                printf("Player Loses!\n");
-                flag = 1;
-                break;
-
-            case 0:
-                printf("Draw!\n");
-                flag = 1;
-                break;
-        }
-
-        turn++;
-
-    }
-
+    free_game_tree(origin);
+    printf("Free Complete!\n");
 }
