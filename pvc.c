@@ -360,7 +360,7 @@ void print_play_status(playables p, int index)
             );
 }
 
-int make_play(uint32_t state, playables playable, int position)
+uint32_t make_play(uint32_t state, playables playable, int position)
 {
 
     /*
@@ -582,9 +582,87 @@ void play_pvc()
 
     print_node(origin);
     node** testbed = generate_moves(origin, 8);
-
     origin->future_states = testbed;
-
     free_game_tree(origin);
     printf("Free Complete!\n");
+
+    // re-add PVP to make sure validity functions are set
+
+    // testcase for draw
+    // printf("%d\n", check_draw(0x0017208D));
+
+    playables seq_array[2];
+
+    printf("WELCOME TO PVC TICTACTOE!\n");
+    printf("1 - X first, 2 - O first\n");
+    scanf("%d", &lead_choice);
+
+    switch (lead_choice)
+    {
+        case 1:
+            seq_array[0] = X;
+            seq_array[1] = O;
+            break;
+
+        case 2:
+            seq_array[0] = O;
+            seq_array[1] = X;
+            break;
+
+        default:
+            printf("That isn't a valid answer! exiting..\n");
+            flag = 1;
+            break;
+    }
+
+    printf("Beginning Game...\n");
+
+    // game loop
+    while (!flag)
+    {
+        playables current = seq_array[turn % 2];
+        char* playable_string = get_string_for_playable(current);
+        printf("Player Turn : %s\n", playable_string);
+
+        printf("The board is currently >> \n");
+        print_board(state);
+
+        int play_pos;
+        printf("Enter the position to play at (1-9) >> ");
+        scanf("%d", &play_pos);
+
+        state = make_play(state,  current, play_pos);
+        if (state == -1)
+        {
+            printf("Invalid Move!\n");
+            flag = 1;
+            break;
+        }
+
+        int winstatus = heuristic(state, current);
+
+        switch (winstatus)
+        {
+            case 1:
+                print_board(state);
+                printf("Player Wins!\n");
+                flag = 1;
+                break;
+
+            case -1:
+                print_board(state);
+                printf("Player Loses!\n");
+                flag = 1;
+                break;
+
+            case 0:
+                print_board(state);
+                printf("Draw!\n");
+                flag = 1;
+                break;
+        }
+
+        turn++;
+
+    }
 }
