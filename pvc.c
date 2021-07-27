@@ -535,7 +535,66 @@ void free_game_tree(node* origin)
 }
 
 
+// function to run the minimax algorithm from a node
+// and return the index of the next best possible move.
+int run_minimax(node* origin)
+{
+    // the score of a node is either the maximum
+    // or the minimum of its child nodes
+    // this is decided based on the :is_maximizer flag
 
+    // index of the move to be made
+    // also the return value
+    int move_tbm_index = 0;
+
+    // safe iteration limits so that we don't segfault 
+    int node_children_count = origin->children_count;
+
+    // if it's a terminal state, return the score
+    // this won't trigger on non-terminal nodes as the
+    // default score for non-terminal nodes is 10
+    if (origin->score >= -1 && origin->score <= 1)
+    {
+        return origin->score;
+    }
+
+    // decision state
+    if (origin->is_maximizer)
+    {
+        // safe lower bound
+        int max_score = -10;
+        // recursively call this function on each child node to find the maximum
+        for (int i = 0; i < node_children_count; i++)
+        {
+            node* operational_node = origin->future_states[i];
+            int node_score = run_minimax(operational_node);
+            // printf("Score for Node %p is %d\n", operational_node, node_score);
+            if (node_score > max_score)
+            {
+                max_score = operational_node->move_index;
+            }
+        }
+        move_tbm_index = max_score;
+    }
+    else // defualts to minimizer
+    {
+        // safe upper bound
+        int min_score = 100;
+        // recursively call this function on each child node to find the minimum
+        for (int i = 0; i < node_children_count; i++)
+        {
+            node* operational_node = origin->future_states[i];
+            int node_score = run_minimax(operational_node);
+            // printf("Score for Node %p is %d\n", operational_node, node_score);
+            if (node_score < min_score)
+            {
+                min_score = operational_node->move_index;
+            }
+        }
+        move_tbm_index = min_score;
+    }
+    return move_tbm_index;
+}
 
 
 void play_pvc()
@@ -550,27 +609,8 @@ void play_pvc()
     int lead_choice = 0;
     int turn = 0;
 
-    // testcase for draw
-    // printf("%d\n", check_draw(0x0017208D));
-
-
-    // TESTING MOVE GENERATION
-    /*
-    node origin1 = {
-        ,
-        X,
-        NULL,
-        0,
-        true,
-        NULL,
-        X,
-        0,
-        0
-    };
-    */
-
     node* origin = malloc(sizeof(node));
-    origin->state = 0x00000000;
+    origin->state = 0x0;
     origin->current_playable = X;
     origin->previous = NULL;
     origin->score = 10;
@@ -583,8 +623,10 @@ void play_pvc()
     print_node(origin);
     node** testbed = generate_moves(origin, 8);
     origin->future_states = testbed;
-    free_game_tree(origin);
-    printf("Free Complete!\n");
+
+    // run while we still have access to game tree
+    printf("Winning Move at %d\n", run_minimax(origin));
+
 
     // re-add PVP to make sure validity functions are set
 
@@ -661,8 +703,13 @@ void play_pvc()
                 flag = 1;
                 break;
         }
-
         turn++;
 
+        // play computer move
+        // TODO integrate computer move to game loop
     }
+
+    free_game_tree(origin);
+    printf("Free Complete!\n");
+
 }

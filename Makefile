@@ -1,5 +1,5 @@
 main:
-	gcc -o ttt main.c pvp.c pvc.c -O3
+	clang -o ttt main.c pvp.c pvc.c -O3
 
 # Address Sanitizer to check for Memory Leaks, because Valgrind
 # Damn near nuked my PC xD
