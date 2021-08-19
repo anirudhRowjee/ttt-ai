@@ -184,6 +184,7 @@ int check_win(uint32_t state, playables p)
 {
     // check if playable P has won the game or not
     int index = get_index_from_playable(p);
+    
     for (int i = 0; i < 8; i++)
     {
         // printf("\n");
@@ -224,7 +225,7 @@ int check_draw(uint32_t state)
 
     if (result == 0)
     {
-        printf("Draw!\n");
+        // printf("Draw!\n");
         return 1;
     }
     else {
@@ -597,6 +598,41 @@ int run_minimax(node* origin)
 }
 
 
+int generate_move_for_state(uint32_t state)
+{
+    // function to allocate and generate game tree for a specific game
+    // state
+    node* origin = malloc(sizeof(node));
+
+    // use this constant pointer to free the game state
+    const node* origin_ref = origin;
+
+    // populate genesis node
+    origin->state = state;
+    origin->current_playable = X;
+    origin->previous = NULL;
+    origin->score = 10;
+    origin->is_maximizer = true;
+    origin->future_states = NULL;
+    origin->move_playable = X;
+    origin->move_index = 0;
+    origin->children_count = 0;
+
+    printf("Generating Game Tree For >> \n");
+    print_node(origin);
+    node** testbed = generate_moves(origin, 8);
+    origin->future_states = testbed;
+
+    // run while we still have access to game tree
+    int wm_index = run_minimax(origin);
+    printf("Winning Move at %d\n", wm_index);
+
+    // free the game tree
+    free_game_tree(origin);
+    return wm_index;
+}
+
+
 void play_pvc()
 {
 
@@ -609,28 +645,6 @@ void play_pvc()
     int lead_choice = 0;
     int turn = 0;
 
-    node* origin = malloc(sizeof(node));
-    origin->state = 0x0;
-    origin->current_playable = X;
-    origin->previous = NULL;
-    origin->score = 10;
-    origin->is_maximizer = true;
-    origin->future_states = NULL;
-    origin->move_playable = X;
-    origin->move_index = 0;
-    origin->children_count = 0;
-
-    print_node(origin);
-    node** testbed = generate_moves(origin, 8);
-    origin->future_states = testbed;
-
-    // run while we still have access to game tree
-    printf("Winning Move at %d\n", run_minimax(origin));
-
-
-    // re-add PVP to make sure validity functions are set
-
-    // testcase for draw
     // printf("%d\n", check_draw(0x0017208D));
 
     playables seq_array[2];
@@ -669,16 +683,32 @@ void play_pvc()
         printf("The board is currently >> \n");
         print_board(state);
 
-        int play_pos;
-        printf("Enter the position to play at (1-9) >> ");
-        scanf("%d", &play_pos);
-
-        state = make_play(state,  current, play_pos);
-        if (state == -1)
+        // set X to be the first player, computer
+        if (current == X)
         {
-            printf("Invalid Move!\n");
-            flag = 1;
-            break;
+            // generate the move
+            int play_pos = generate_move_for_state(state);
+            state = make_play(state,  current, play_pos);
+            if (state == -1)
+            {
+                printf("Invalid Move!\n");
+                flag = 1;
+                break;
+            }
+        }
+        else
+        {
+            int play_pos;
+            printf("Enter the position to play at (1-9) >> ");
+            scanf("%d", &play_pos);
+
+            state = make_play(state,  current, play_pos);
+            if (state == -1)
+            {
+                printf("Invalid Move!\n");
+                flag = 1;
+                break;
+            }
         }
 
         int winstatus = heuristic(state, current);
@@ -705,11 +735,9 @@ void play_pvc()
         }
         turn++;
 
-        // play computer move
-        // TODO integrate computer move to game loop
     }
 
-    free_game_tree(origin);
+    // free_game_tree(origin);
     printf("Free Complete!\n");
 
 }
