@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTT-AI Bitboard Generator</title>
+</head>
+<body>
+    <input type="text" name="XOString" id="xostring">
+    <button onclick="ConvertXYToHex32()">Generate</button>
+    <p id="hex" > --- </p>
+
+    <script>
+
+      String.prototype.replaceAt = function(index, replacement) {
+        return this.substr(0, index) + replacement + this.substr(index + replacement.length);
+      }
+
+      function ConvertXYToHex32()
+      {
+
+        // default two-byte padding
+        const default_padding = "00000000"
+        const default_offset = 3;
+
+        // placeholder strings for X and Y (three bytes each)
+        var x_string = "000000000000";
+        var y_string = "000000000000";
+
+        // take input from here
+        var xy_content = document.getElementById("xostring").value;
+        // dump output here
+        var output_p = document.getElementById("hex");
+
+        console.log("XY Content > ", xy_content);
+
+        for (let i = 0; i < 9; i++)
+        {
+          console.log(xy_content[i])
+          if (xy_content[i] == "X")
+          {
+            x_string = x_string.replaceAt(default_offset + i, "1")
+            console.log(x_string);
+          }
+          else if (xy_content[i] == "O")
+          {
+            y_string = y_string.replaceAt(default_offset + i, "1")
+            console.log(y_string);
+          }
+        };
+
+        var num_string = default_padding + x_string + y_string;
+        console.log(num_string);
+
+        var hex_string = parseInt(num_string, 2).toString(16);
+        console.log(hex_string);
+        output_p.innerText = "0x" + hex_string;
+      }
+    </script>
+</body>
+</html>
